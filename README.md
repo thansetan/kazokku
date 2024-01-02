@@ -1,5 +1,5 @@
 # How to run
- Rename `example.env` to `.env` and then run `docker compose up`.
+ Rename `example.env` to `.env` then fill the data and then run `docker compose up`.
 
 
 # Postman Documentation
