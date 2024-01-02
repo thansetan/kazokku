@@ -1,0 +1,8 @@
+CREATE TABLE IF NOT EXISTS credit_cards(
+    id SERIAL PRIMARY KEY,
+    type VARCHAR(50) NOT NULL,
+    number VARCHAR(50) NOT NULL,
+    name VARCHAR(50) NOT NULL,
+    expired CHAR(5) NOT NULL,
+    CVV VARCHAR(10) NOT NULL
+);
