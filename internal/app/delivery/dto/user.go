@@ -51,6 +51,11 @@ type UserUpdateRequest struct {
 }
 
 var (
+	validCCType = validation.NewStringRule(func(s string) bool {
+		lowerS := strings.ToLower(s)
+		return lowerS == "visa" || lowerS == "mastercard" || lowerS == "amex" || lowerS == "american express" || lowerS == "discover"
+	}, "invalid credit card type (only visa, mastercard, american express/amex, discover))")
+
 	validCCExpDate = validation.NewStringRule(func(s string) bool {
 		if len(s) != 5 {
 			return false
@@ -85,11 +90,11 @@ func (r UserRegisterRequest) Validate() error {
 		validation.Field(&r.Email, validation.Required, is.Email),
 		validation.Field(&r.Password, validation.Required),
 		validation.Field(&r.Address, validation.Required),
-		validation.Field(&r.CreditCardType, validation.Required),
+		validation.Field(&r.CreditCardType, validation.Required, validCCType),
 		validation.Field(&r.CreditCardNumber, validation.Required, is.CreditCard),
 		validation.Field(&r.CreditCardName, validation.Required),
 		validation.Field(&r.CreditCardExpired, validation.Required, validCCExpDate),
-		validation.Field(&r.CreditCardCVV, validation.Required),
+		validation.Field(&r.CreditCardCVV, validation.Required, validation.Length(3, 4), is.UTFNumeric),
 	)
 }
 
@@ -97,8 +102,10 @@ func (r UserUpdateRequest) Validate() error {
 	return validation.ValidateStruct(&r,
 		validation.Field(&r.UserID, validation.Required),
 		validation.Field(&r.Email, is.Email),
+		validation.Field(&r.CreditCardType, validCCType),
 		validation.Field(&r.CreditCardNumber, is.CreditCard),
 		validation.Field(&r.CreditCardExpired, validCCExpDate),
+		validation.Field(&r.CreditCardCVV, validation.Length(3, 4), is.UTFNumeric),
 	)
 }
 
