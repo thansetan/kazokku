@@ -65,7 +65,8 @@ func (h userHandler) GetAll(ctx *fiber.Ctx) error {
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{
-		"users": users,
+		"count": len(users),
+		"rows":  users,
 	})
 }
 
@@ -90,9 +91,7 @@ func (h userHandler) GetByID(ctx *fiber.Ctx) error {
 		})
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{
-		"user": user,
-	})
+	return ctx.Status(fiber.StatusOK).JSON(user)
 }
 
 func (h userHandler) UpdateByID(ctx *fiber.Ctx) error {
