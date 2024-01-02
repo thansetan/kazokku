@@ -137,7 +137,7 @@ func (s userService) GetAll(ctx *fiber.Ctx, query dto.UserQuery) ([]dto.UserResp
 
 	data, err := s.userRepo.GetAll(ctx.Context(), query)
 	if err != nil {
-		return users, helpers.NewResponseError(err, fiber.StatusInternalServerError)
+		return users, helpers.NewResponseError(helpers.ErrInternal, fiber.StatusInternalServerError)
 	}
 
 	for _, user := range data {
@@ -169,7 +169,7 @@ func (s userService) GetByID(ctx *fiber.Ctx, userID uint) (dto.UserResponse, err
 
 	data, err := s.userRepo.GetByID(ctx.Context(), userID)
 	if err != nil {
-		return user, helpers.NewResponseError(err, fiber.StatusInternalServerError)
+		return user, helpers.NewResponseError(helpers.ErrInternal, fiber.StatusInternalServerError)
 	}
 
 	if data.IsEmpty() {
