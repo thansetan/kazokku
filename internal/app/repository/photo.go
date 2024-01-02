@@ -5,6 +5,7 @@ import (
 	"kazokku/internal/domain"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type PhotoRepository interface {
@@ -12,10 +13,10 @@ type PhotoRepository interface {
 }
 
 type photoRepository struct {
-	db *pgx.Conn
+	db *pgxpool.Pool
 }
 
-func NewPhotoRepository(db *pgx.Conn) photoRepository {
+func NewPhotoRepository(db *pgxpool.Pool) photoRepository {
 	return photoRepository{db}
 }
 

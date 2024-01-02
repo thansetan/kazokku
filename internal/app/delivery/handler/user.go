@@ -27,10 +27,10 @@ func (h userHandler) Register(ctx *fiber.Ctx) error {
 
 	id, err := h.userService.Create(ctx, data)
 	if err != nil {
-		var errResp helpers.ResponseError
-		if errors.As(err, &errResp) {
-			return ctx.Status(errResp.Code()).JSON(fiber.Map{
-				"error": errResp.Error(),
+		var respErr helpers.ResponseError
+		if errors.As(err, &respErr) {
+			return ctx.Status(respErr.Code()).JSON(fiber.Map{
+				"error": respErr.Error(),
 			})
 		}
 		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -53,10 +53,10 @@ func (h userHandler) GetAll(ctx *fiber.Ctx) error {
 
 	users, err := h.userService.GetAll(ctx, query)
 	if err != nil {
-		var errResp helpers.ResponseError
-		if errors.As(err, &errResp) {
-			return ctx.Status(errResp.Code()).JSON(fiber.Map{
-				"error": errResp.Error(),
+		var respErr helpers.ResponseError
+		if errors.As(err, &respErr) {
+			return ctx.Status(respErr.Code()).JSON(fiber.Map{
+				"error": respErr.Error(),
 			})
 		}
 		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -80,10 +80,10 @@ func (h userHandler) GetByID(ctx *fiber.Ctx) error {
 
 	user, err := h.userService.GetByID(ctx, uint(userID))
 	if err != nil {
-		var errResp helpers.ResponseError
-		if errors.As(err, &errResp) {
-			return ctx.Status(errResp.Code()).JSON(fiber.Map{
-				"error": errResp.Error(),
+		var respErr helpers.ResponseError
+		if errors.As(err, &respErr) {
+			return ctx.Status(respErr.Code()).JSON(fiber.Map{
+				"error": respErr.Error(),
 			})
 		}
 		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -103,10 +103,10 @@ func (h userHandler) UpdateByID(ctx *fiber.Ctx) error {
 	}
 
 	if err := h.userService.UpdateByID(ctx, data); err != nil {
-		var errResp helpers.ResponseError
-		if errors.As(err, &errResp) {
-			return ctx.Status(errResp.Code()).JSON(fiber.Map{
-				"error": errResp.Error(),
+		var respErr helpers.ResponseError
+		if errors.As(err, &respErr) {
+			return ctx.Status(respErr.Code()).JSON(fiber.Map{
+				"error": respErr.Error(),
 			})
 		}
 		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{

@@ -8,6 +8,7 @@ import (
 	"kazokku/internal/helpers"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type UserRepository interface {
@@ -18,10 +19,10 @@ type UserRepository interface {
 }
 
 type userRepository struct {
-	db *pgx.Conn
+	db *pgxpool.Pool
 }
 
-func NewUserRepository(db *pgx.Conn) userRepository {
+func NewUserRepository(db *pgxpool.Pool) userRepository {
 	return userRepository{db}
 }
 

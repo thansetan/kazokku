@@ -6,11 +6,12 @@ import (
 	"kazokku/internal/app/repository"
 	"kazokku/internal/domain"
 	"kazokku/internal/helpers"
+	"log/slog"
 	"path/filepath"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type UserService interface {
@@ -21,28 +22,32 @@ type UserService interface {
 }
 
 type userService struct {
-	db        *pgx.Conn
+	db        *pgxpool.Pool
 	userRepo  repository.UserRepository
 	ccRepo    repository.CreditCardRepository
 	photoRepo repository.PhotoRepository
+	logger    *slog.Logger
 }
 
-func NewUserService(db *pgx.Conn, userRepo repository.UserRepository, ccRepo repository.CreditCardRepository, photoRepo repository.PhotoRepository) UserService {
+func NewUserService(db *pgxpool.Pool, logger *slog.Logger, userRepo repository.UserRepository, ccRepo repository.CreditCardRepository, photoRepo repository.PhotoRepository) UserService {
 	return userService{
 		db:        db,
 		userRepo:  userRepo,
 		ccRepo:    ccRepo,
 		photoRepo: photoRepo,
+		logger:    logger,
 	}
 }
 
 func (s userService) Create(ctx *fiber.Ctx, data dto.UserRegisterRequest) (uint, error) {
+	requestID := ctx.Context().Value("requestid")
 	if err := data.Validate(); err != nil {
 		return 0, helpers.NewResponseError(err, fiber.StatusBadRequest)
 	}
 
 	files, err := ctx.MultipartForm()
 	if err != nil {
+		s.logger.ErrorContext(ctx.Context(), "error parsing multipart form", "error", err, "request_id", requestID, "request_id", requestID)
 		return 0, helpers.NewResponseError(helpers.ErrInternal, fiber.StatusInternalServerError)
 	}
 
@@ -50,19 +55,22 @@ func (s userService) Create(ctx *fiber.Ctx, data dto.UserRegisterRequest) (uint,
 		return 0, helpers.NewResponseError(errors.New("Please provide photos fields."), fiber.StatusBadRequest)
 	}
 
-	tx, err := s.db.Begin(ctx.Context())
+	data.Password, err = helpers.HashPassword(data.Password)
 	if err != nil {
+		s.logger.ErrorContext(ctx.Context(), "error hashing password", "error", err, "request_id", requestID)
 		return 0, helpers.NewResponseError(helpers.ErrInternal, fiber.StatusInternalServerError)
 	}
 
-	data.Password, err = helpers.HashPassword(data.Password)
+	tx, err := s.db.Begin(ctx.Context())
 	if err != nil {
+		s.logger.ErrorContext(ctx.Context(), "error creating transaction", "error", err, "request_id", requestID)
 		return 0, helpers.NewResponseError(helpers.ErrInternal, fiber.StatusInternalServerError)
 	}
 
 	// create user record
 	id, err := s.userRepo.Insert(ctx.Context(), tx, helpers.UserRegisterDTOtoUserDomain(data))
 	if err != nil {
+		s.logger.ErrorContext(ctx.Context(), "error inserting user", "error", err, "request_id", requestID)
 		tx.Rollback(ctx.Context())
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
@@ -74,6 +82,7 @@ func (s userService) Create(ctx *fiber.Ctx, data dto.UserRegisterRequest) (uint,
 	// create credit card record
 	err = s.ccRepo.Insert(ctx.Context(), tx, helpers.UserRegisterDTOtoCCDomain(data, id))
 	if err != nil {
+		s.logger.ErrorContext(ctx.Context(), "error inserting credit card", "error", err, "request_id", requestID)
 		tx.Rollback(ctx.Context())
 		return 0, helpers.NewResponseError(helpers.ErrInternal, fiber.StatusInternalServerError)
 	}
@@ -88,6 +97,7 @@ func (s userService) Create(ctx *fiber.Ctx, data dto.UserRegisterRequest) (uint,
 
 		savedFile, err := helpers.SaveFile(id, file)
 		if err != nil {
+			s.logger.ErrorContext(ctx.Context(), "error saving file", "error", err, "request_id", requestID)
 			tx.Rollback(ctx.Context())
 			return 0, helpers.NewResponseError(helpers.ErrInternal, fiber.StatusInternalServerError)
 		}
@@ -100,6 +110,7 @@ func (s userService) Create(ctx *fiber.Ctx, data dto.UserRegisterRequest) (uint,
 	// create photo records
 	err = s.photoRepo.InsertBatch(ctx.Context(), tx, photos)
 	if err != nil {
+		s.logger.ErrorContext(ctx.Context(), "error inserting photos", "error", err, "request_id", requestID)
 		tx.Rollback(ctx.Context())
 		return 0, helpers.NewResponseError(helpers.ErrInternal, fiber.StatusInternalServerError)
 	}
@@ -107,6 +118,7 @@ func (s userService) Create(ctx *fiber.Ctx, data dto.UserRegisterRequest) (uint,
 	// commit transaction
 	err = tx.Commit(ctx.Context())
 	if err != nil {
+		s.logger.ErrorContext(ctx.Context(), "error commiting transaction", "error", err, "request_id", requestID)
 		return 0, helpers.NewResponseError(helpers.ErrInternal, fiber.StatusInternalServerError)
 	}
 
@@ -114,6 +126,7 @@ func (s userService) Create(ctx *fiber.Ctx, data dto.UserRegisterRequest) (uint,
 }
 
 func (s userService) GetAll(ctx *fiber.Ctx, query dto.UserQuery) ([]dto.UserResponse, error) {
+	requestID := ctx.Context().Value("requestid")
 	var users []dto.UserResponse
 	if err := query.Validate(); err != nil {
 		return users, helpers.NewResponseError(err, fiber.StatusBadRequest)
@@ -137,6 +150,7 @@ func (s userService) GetAll(ctx *fiber.Ctx, query dto.UserQuery) ([]dto.UserResp
 
 	data, err := s.userRepo.GetAll(ctx.Context(), query)
 	if err != nil {
+		s.logger.ErrorContext(ctx.Context(), "error getting all users", "error", err, "request_id", requestID)
 		return users, helpers.NewResponseError(helpers.ErrInternal, fiber.StatusInternalServerError)
 	}
 
@@ -165,10 +179,12 @@ func (s userService) GetAll(ctx *fiber.Ctx, query dto.UserQuery) ([]dto.UserResp
 }
 
 func (s userService) GetByID(ctx *fiber.Ctx, userID uint) (dto.UserResponse, error) {
+	requestID := ctx.Context().Value("requestid")
 	var user dto.UserResponse
 
 	data, err := s.userRepo.GetByID(ctx.Context(), userID)
 	if err != nil {
+		s.logger.ErrorContext(ctx.Context(), "error getting user by id", "error", err, "request_id", requestID)
 		return user, helpers.NewResponseError(helpers.ErrInternal, fiber.StatusInternalServerError)
 	}
 
@@ -196,30 +212,35 @@ func (s userService) GetByID(ctx *fiber.Ctx, userID uint) (dto.UserResponse, err
 }
 
 func (s userService) UpdateByID(ctx *fiber.Ctx, data dto.UserUpdateRequest) error {
+	requestID := ctx.Context().Value("requestid")
 	if err := data.Validate(); err != nil {
 		return helpers.NewResponseError(err, fiber.StatusBadRequest)
 	}
 
 	files, err := ctx.MultipartForm()
 	if err != nil {
+		s.logger.ErrorContext(ctx.Context(), "error parsing multipart form", "error", err, "request_id", requestID)
 		return helpers.NewResponseError(helpers.ErrInternal, fiber.StatusInternalServerError)
 	}
 
 	if data.Password != "" {
 		data.Password, err = helpers.HashPassword(data.Password)
 		if err != nil {
+			s.logger.ErrorContext(ctx.Context(), "error hashing password", "error", err, "request_id", requestID)
 			return helpers.NewResponseError(helpers.ErrInternal, fiber.StatusInternalServerError)
 		}
 	}
 
 	tx, err := s.db.Begin(ctx.Context())
 	if err != nil {
+		s.logger.ErrorContext(ctx.Context(), "error creating transaction", "error", err, "request_id", requestID)
 		return helpers.NewResponseError(helpers.ErrInternal, fiber.StatusInternalServerError)
 	}
 
 	// update user record
 	err = s.userRepo.Update(ctx.Context(), tx, data.UserID, helpers.UserUpdateDTOtoUserDomain(data))
 	if err != nil {
+		s.logger.ErrorContext(ctx.Context(), "error updating user", "error", err, "request_id", requestID)
 		tx.Rollback(ctx.Context())
 		return helpers.NewResponseError(helpers.ErrInternal, fiber.StatusInternalServerError)
 	}
@@ -227,6 +248,7 @@ func (s userService) UpdateByID(ctx *fiber.Ctx, data dto.UserUpdateRequest) erro
 	// update credit card record
 	err = s.ccRepo.Update(ctx.Context(), tx, helpers.UserUpdateDTOtoCCDomain(data, data.UserID))
 	if err != nil {
+		s.logger.ErrorContext(ctx.Context(), "error updating credit card", "error", err, "request_id", requestID)
 		tx.Rollback(ctx.Context())
 		return helpers.NewResponseError(helpers.ErrInternal, fiber.StatusInternalServerError)
 	}
@@ -241,6 +263,7 @@ func (s userService) UpdateByID(ctx *fiber.Ctx, data dto.UserUpdateRequest) erro
 
 			savedFile, err := helpers.SaveFile(data.UserID, file)
 			if err != nil {
+				s.logger.ErrorContext(ctx.Context(), "error saving file", "error", err, "request_id", requestID)
 				tx.Rollback(ctx.Context())
 				return helpers.NewResponseError(helpers.ErrInternal, fiber.StatusInternalServerError)
 			}
@@ -253,6 +276,7 @@ func (s userService) UpdateByID(ctx *fiber.Ctx, data dto.UserUpdateRequest) erro
 		// create photo records
 		err = s.photoRepo.InsertBatch(ctx.Context(), tx, photos)
 		if err != nil {
+			s.logger.ErrorContext(ctx.Context(), "error inserting photos", "error", err, "request_id", requestID)
 			tx.Rollback(ctx.Context())
 			return helpers.NewResponseError(helpers.ErrInternal, fiber.StatusInternalServerError)
 		}
@@ -261,6 +285,7 @@ func (s userService) UpdateByID(ctx *fiber.Ctx, data dto.UserUpdateRequest) erro
 	// commit transaction
 	err = tx.Commit(ctx.Context())
 	if err != nil {
+		s.logger.ErrorContext(ctx.Context(), "error commiting transaction", "error", err, "request_id", requestID)
 		return helpers.NewResponseError(helpers.ErrInternal, fiber.StatusInternalServerError)
 	}
 

@@ -10,7 +10,7 @@ import (
 )
 
 func SaveFile(userID uint, file *multipart.FileHeader) (string, error) {
-	outputDir := filepath.Join(os.Getenv("SAVE_DIR"), fmt.Sprintf("%d", userID))
+	outputDir := filepath.Join(os.Getenv("SAVE_DIR"), "photos", fmt.Sprintf("%d", userID))
 	outputFilePath := filepath.Join(outputDir, fmt.Sprintf("%d%s", time.Now().UnixNano(), filepath.Ext(file.Filename)))
 
 	err := os.MkdirAll(outputDir, os.ModePerm)
@@ -35,7 +35,7 @@ func SaveFile(userID uint, file *multipart.FileHeader) (string, error) {
 		return outputFilePath, err
 	}
 
-	return strings.TrimPrefix(outputFilePath, os.Getenv("SAVE_DIR")), nil
+	return strings.TrimPrefix(outputFilePath, filepath.Join(os.Getenv("SAVE_DIR"), "photos")), nil
 }
 
 func IsImage(fileType string) bool {

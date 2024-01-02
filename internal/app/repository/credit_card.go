@@ -5,6 +5,7 @@ import (
 	"kazokku/internal/domain"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type CreditCardRepository interface {
@@ -13,10 +14,10 @@ type CreditCardRepository interface {
 }
 
 type creditCardRepository struct {
-	db *pgx.Conn
+	db *pgxpool.Pool
 }
 
-func NewCreditCardRepository(db *pgx.Conn) creditCardRepository {
+func NewCreditCardRepository(db *pgxpool.Pool) creditCardRepository {
 	return creditCardRepository{db}
 }
 
