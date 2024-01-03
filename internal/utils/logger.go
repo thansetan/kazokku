@@ -13,7 +13,7 @@ func NewLogger(logOutputDir string) (*slog.Logger, error) {
 		return nil, err
 	}
 
-	logFile, err := os.OpenFile(filepath.Join(logOutputDir, "app.log"), os.O_APPEND|os.O_CREATE, 0666)
+	logFile, err := os.OpenFile(filepath.Join(logOutputDir, "app.log"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
 		return nil, err
 	}

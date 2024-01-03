@@ -12,6 +12,12 @@ services:
       - POSTGRES_DB=${DB_NAME}
     ports:
       - "${DB_PORT}:5432"
+    healthcheck:
+      test: "pg_isready -U ${DB_USERNAME} -d ${DB_NAME} -h localhost -p 5432"
+      interval: 5s
+      timeout: 60s
+      retries: 3
+      start_period: 5s
   app:
     container_name: kazokku-app
     build:
@@ -21,10 +27,12 @@ services:
       - .env
     environment:
       - DB_HOST=db
+      - DB_PORT=5432
     ports:
       - "${APP_PORT}:${APP_PORT}"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     volumes:
       - "./app_data:${SAVE_DIR}"
     restart: always
