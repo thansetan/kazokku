@@ -112,7 +112,7 @@ func (r UserUpdateRequest) Validate() error {
 func (q UserQuery) Validate() error {
 	return validation.ValidateStruct(&q,
 		validation.Field(&q.Offset, validation.Min(0)),
-		validation.Field(&q.Limit, validation.Min(30)),
+		validation.Field(&q.Limit, validation.Min(0)),
 		validation.Field(&q.OrderBy, validOrderBy),
 		validation.Field(&q.SortBy, validSortBy),
 	)

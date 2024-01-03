@@ -35,7 +35,7 @@ func SaveFile(userID uint, file *multipart.FileHeader) (string, error) {
 		return outputFilePath, err
 	}
 
-	return strings.TrimPrefix(outputFilePath, filepath.Join(os.Getenv("SAVE_DIR"), "photos")), nil
+	return filepath.ToSlash(strings.TrimPrefix(outputFilePath, filepath.Join(os.Getenv("SAVE_DIR"), "photos"))), nil
 }
 
 func IsImage(fileType string) bool {

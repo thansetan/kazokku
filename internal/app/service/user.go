@@ -92,7 +92,7 @@ func (s userService) Create(ctx *fiber.Ctx, data dto.UserRegisterRequest) (uint,
 
 	for _, file := range files.File["photos"] {
 		if !helpers.IsImage(file.Header.Get("Content-Type")) {
-			continue
+			continue // skip if not image
 		}
 
 		savedFile, err := helpers.SaveFile(id, file)
@@ -140,10 +140,6 @@ func (s userService) GetAll(ctx *fiber.Ctx, query dto.UserQuery) ([]dto.UserResp
 		query.SortBy = "asc"
 	}
 
-	if query.Offset < 0 {
-		query.Offset = 0
-	}
-
 	if query.Limit <= 0 {
 		query.Limit = 30
 	}
@@ -157,7 +153,7 @@ func (s userService) GetAll(ctx *fiber.Ctx, query dto.UserQuery) ([]dto.UserResp
 	for _, user := range data {
 		var photos []string
 		for _, photo := range user.Photos {
-			photos = append(photos, filepath.Join("/photos", photo.Filepath))
+			photos = append(photos, filepath.ToSlash(filepath.Join("/photos", photo.Filepath)))
 		}
 
 		users = append(users, dto.UserResponse{
@@ -205,7 +201,7 @@ func (s userService) GetByID(ctx *fiber.Ctx, userID uint) (dto.UserResponse, err
 	}
 
 	for i, photo := range data.Photos {
-		user.Photos[i] = filepath.Join("/photos", photo.Filepath)
+		user.Photos[i] = filepath.ToSlash(filepath.Join("/photos", photo.Filepath))
 	}
 
 	return user, nil
@@ -258,7 +254,7 @@ func (s userService) UpdateByID(ctx *fiber.Ctx, data dto.UserUpdateRequest) erro
 		var photos []domain.Photo
 		for _, file := range files.File["photos"] {
 			if !helpers.IsImage(file.Header.Get("Content-Type")) {
-				continue
+				continue // skip if not image
 			}
 
 			savedFile, err := helpers.SaveFile(data.UserID, file)
