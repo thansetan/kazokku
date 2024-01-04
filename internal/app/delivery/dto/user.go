@@ -8,7 +8,8 @@ import (
 	"github.com/go-ozzo/ozzo-validation/v4/is"
 )
 
-type UserRegisterRequest struct {
+type UserRequest struct {
+	UserID            uint   `json:"user_id" form:"user_id"`
 	Name              string `json:"name" form:"name"`
 	Address           string `json:"address" form:"address"`
 	Email             string `json:"email" form:"email"`
@@ -37,19 +38,6 @@ type UserResponse struct {
 	CreditCard CreditCardResponse `json:"creditcard"`
 }
 
-type UserUpdateRequest struct {
-	UserID            uint   `json:"user_id" form:"user_id"`
-	Name              string `json:"name" form:"name"`
-	Address           string `json:"address" form:"address"`
-	Email             string `json:"email" form:"email"`
-	Password          string `json:"password" form:"password"`
-	CreditCardType    string `json:"creditcard_type" form:"creditcard_type"`
-	CreditCardNumber  string `json:"creditcard_number" form:"creditcard_number"`
-	CreditCardName    string `json:"creditcard_name" form:"creditcard_name"`
-	CreditCardExpired string `json:"creditcard_expired" form:"creditcard_expired"`
-	CreditCardCVV     string `json:"creditcard_cvv" form:"creditcard_cvv"`
-}
-
 var (
 	validCCType = validation.NewStringRule(func(s string) bool {
 		lowerS := strings.ToLower(s)
@@ -71,25 +59,35 @@ var (
 		}
 
 		return true
-	}, "invalid credit card expired date")
+	}, "invalid credit card expired date (format is MM/YY)")
 
 	validOrderBy = validation.NewStringRule(func(s string) bool {
 		lowerS := strings.ToLower(s)
 		return lowerS == "name" || lowerS == "email"
-	}, "invalid order by")
+	}, "invalid order by (valid values are name, email)")
 
 	validSortBy = validation.NewStringRule(func(s string) bool {
 		lowerS := strings.ToLower(s)
 		return lowerS == "asc" || lowerS == "desc"
-	}, "invalid sort by")
+	}, "invalid sort by (valid values are asc, desc)")
 )
 
-func (r UserRegisterRequest) Validate() error {
+func (r UserRequest) ValidateRegister() error {
 	return validation.ValidateStruct(&r,
 		validation.Field(&r.Name, validation.Required),
 		validation.Field(&r.Email, validation.Required, is.Email),
 		validation.Field(&r.Password, validation.Required),
 		validation.Field(&r.Address, validation.Required),
+		validation.Field(&r.CreditCardType, validation.Required),
+		validation.Field(&r.CreditCardNumber, validation.Required),
+		validation.Field(&r.CreditCardName, validation.Required),
+		validation.Field(&r.CreditCardExpired, validation.Required),
+		validation.Field(&r.CreditCardCVV, validation.Required),
+	)
+}
+
+func (r UserRequest) ValidateCreditCardRegister() error {
+	return validation.ValidateStruct(&r,
 		validation.Field(&r.CreditCardType, validation.Required, validCCType),
 		validation.Field(&r.CreditCardNumber, validation.Required, is.CreditCard),
 		validation.Field(&r.CreditCardName, validation.Required),
@@ -98,10 +96,15 @@ func (r UserRegisterRequest) Validate() error {
 	)
 }
 
-func (r UserUpdateRequest) Validate() error {
+func (r UserRequest) ValidateUpdate() error {
 	return validation.ValidateStruct(&r,
 		validation.Field(&r.UserID, validation.Required),
 		validation.Field(&r.Email, is.Email),
+	)
+}
+
+func (r UserRequest) ValidateCreditCardUpdate() error {
+	return validation.ValidateStruct(&r,
 		validation.Field(&r.CreditCardType, validCCType),
 		validation.Field(&r.CreditCardNumber, is.CreditCard),
 		validation.Field(&r.CreditCardExpired, validCCExpDate),

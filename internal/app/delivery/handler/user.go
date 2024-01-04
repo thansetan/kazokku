@@ -18,7 +18,7 @@ func NewUserHandler(userService service.UserService) userHandler {
 }
 
 func (h userHandler) Register(ctx *fiber.Ctx) error {
-	var data dto.UserRegisterRequest
+	var data dto.UserRequest
 	if err := ctx.BodyParser(&data); err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": err.Error(),
@@ -29,6 +29,12 @@ func (h userHandler) Register(ctx *fiber.Ctx) error {
 	if err != nil {
 		var respErr helpers.ResponseError
 		if errors.As(err, &respErr) {
+			var validationErr helpers.ValidationError
+			if errors.As(respErr.Unwrap(), &validationErr) {
+				return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+					"errors": validationErr.ErrSlice(),
+				})
+			}
 			return ctx.Status(respErr.Code()).JSON(fiber.Map{
 				"error": respErr.Error(),
 			})
@@ -55,6 +61,12 @@ func (h userHandler) GetAll(ctx *fiber.Ctx) error {
 	if err != nil {
 		var respErr helpers.ResponseError
 		if errors.As(err, &respErr) {
+			var validationErr helpers.ValidationError
+			if errors.As(respErr.Unwrap(), &validationErr) {
+				return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+					"errors": validationErr.ErrSlice(),
+				})
+			}
 			return ctx.Status(respErr.Code()).JSON(fiber.Map{
 				"error": respErr.Error(),
 			})
@@ -95,7 +107,7 @@ func (h userHandler) GetByID(ctx *fiber.Ctx) error {
 }
 
 func (h userHandler) UpdateByID(ctx *fiber.Ctx) error {
-	var data dto.UserUpdateRequest
+	var data dto.UserRequest
 	if err := ctx.BodyParser(&data); err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": err.Error(),
@@ -105,6 +117,12 @@ func (h userHandler) UpdateByID(ctx *fiber.Ctx) error {
 	if err := h.userService.UpdateByID(ctx, data); err != nil {
 		var respErr helpers.ResponseError
 		if errors.As(err, &respErr) {
+			var validationErr helpers.ValidationError
+			if errors.As(respErr.Unwrap(), &validationErr) {
+				return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+					"errors": validationErr.ErrSlice(),
+				})
+			}
 			return ctx.Status(respErr.Code()).JSON(fiber.Map{
 				"error": respErr.Error(),
 			})

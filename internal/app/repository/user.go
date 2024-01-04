@@ -123,9 +123,12 @@ func (repo userRepository) GetByID(ctx context.Context, userID uint) (domain.Use
 func (repo userRepository) Update(ctx context.Context, tx pgx.Tx, userID uint, data domain.User) error {
 	stmt := "UPDATE users SET name = COALESCE($1, name), address = COALESCE($2, address), email = COALESCE($3, email), password = COALESCE($4, password) WHERE id = $5;"
 
-	_, err := tx.Exec(ctx, stmt, data.Name, data.Address, data.Email, data.Password, userID)
+	cmd, err := tx.Exec(ctx, stmt, data.Name, data.Address, data.Email, data.Password, userID)
 	if err != nil {
 		return err
+	}
+	if cmd.RowsAffected() == 0 {
+		return helpers.ErrUserNotFound
 	}
 
 	return nil

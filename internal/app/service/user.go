@@ -15,10 +15,10 @@ import (
 )
 
 type UserService interface {
-	Create(ctx *fiber.Ctx, data dto.UserRegisterRequest) (uint, error)
+	Create(ctx *fiber.Ctx, data dto.UserRequest) (uint, error)
 	GetAll(ctx *fiber.Ctx, query dto.UserQuery) ([]dto.UserResponse, error)
 	GetByID(ctx *fiber.Ctx, userID uint) (dto.UserResponse, error)
-	UpdateByID(ctx *fiber.Ctx, data dto.UserUpdateRequest) error
+	UpdateByID(ctx *fiber.Ctx, data dto.UserRequest) error
 }
 
 type userService struct {
@@ -39,10 +39,14 @@ func NewUserService(db *pgxpool.Pool, logger *slog.Logger, userRepo repository.U
 	}
 }
 
-func (s userService) Create(ctx *fiber.Ctx, data dto.UserRegisterRequest) (uint, error) {
+func (s userService) Create(ctx *fiber.Ctx, data dto.UserRequest) (uint, error) {
 	requestID := ctx.Context().Value("requestid")
-	if err := data.Validate(); err != nil {
-		return 0, helpers.NewResponseError(err, fiber.StatusBadRequest)
+	if err := data.ValidateRegister(); err != nil {
+		return 0, helpers.NewResponseError(helpers.NewValidationError(err), fiber.StatusBadRequest)
+	}
+
+	if err := data.ValidateCreditCardRegister(); err != nil {
+		return 0, helpers.NewResponseError(helpers.ErrInvalidCreditCard, fiber.StatusBadRequest)
 	}
 
 	files, err := ctx.MultipartForm()
@@ -74,7 +78,7 @@ func (s userService) Create(ctx *fiber.Ctx, data dto.UserRegisterRequest) (uint,
 		tx.Rollback(ctx.Context())
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-			return 0, helpers.NewResponseError(errors.New("Email already registered."), fiber.StatusConflict)
+			return 0, helpers.NewResponseError(helpers.ErrEmailUsed, fiber.StatusConflict)
 		}
 		return 0, helpers.NewResponseError(helpers.ErrInternal, fiber.StatusInternalServerError)
 	}
@@ -129,7 +133,7 @@ func (s userService) GetAll(ctx *fiber.Ctx, query dto.UserQuery) ([]dto.UserResp
 	requestID := ctx.Context().Value("requestid")
 	var users []dto.UserResponse
 	if err := query.Validate(); err != nil {
-		return users, helpers.NewResponseError(err, fiber.StatusBadRequest)
+		return users, helpers.NewResponseError(helpers.NewValidationError(err), fiber.StatusBadRequest)
 	}
 
 	if query.OrderBy == "" {
@@ -185,7 +189,7 @@ func (s userService) GetByID(ctx *fiber.Ctx, userID uint) (dto.UserResponse, err
 	}
 
 	if data.IsEmpty() {
-		return user, helpers.NewResponseError(errors.New("User not found."), fiber.StatusNotFound)
+		return user, helpers.NewResponseError(helpers.ErrUserNotFound, fiber.StatusNotFound)
 	}
 
 	user.ID = data.ID
@@ -207,10 +211,14 @@ func (s userService) GetByID(ctx *fiber.Ctx, userID uint) (dto.UserResponse, err
 	return user, nil
 }
 
-func (s userService) UpdateByID(ctx *fiber.Ctx, data dto.UserUpdateRequest) error {
+func (s userService) UpdateByID(ctx *fiber.Ctx, data dto.UserRequest) error {
 	requestID := ctx.Context().Value("requestid")
-	if err := data.Validate(); err != nil {
-		return helpers.NewResponseError(err, fiber.StatusBadRequest)
+	if err := data.ValidateUpdate(); err != nil {
+		return helpers.NewResponseError(helpers.NewValidationError(err), fiber.StatusBadRequest)
+	}
+
+	if err := data.ValidateCreditCardUpdate(); err != nil {
+		return helpers.NewResponseError(helpers.ErrInvalidCreditCard, fiber.StatusBadRequest)
 	}
 
 	files, err := ctx.MultipartForm()
@@ -236,8 +244,15 @@ func (s userService) UpdateByID(ctx *fiber.Ctx, data dto.UserUpdateRequest) erro
 	// update user record
 	err = s.userRepo.Update(ctx.Context(), tx, data.UserID, helpers.UserUpdateDTOtoUserDomain(data))
 	if err != nil {
-		s.logger.ErrorContext(ctx.Context(), "error updating user", "error", err, "request_id", requestID)
 		tx.Rollback(ctx.Context())
+		if errors.Is(err, helpers.ErrUserNotFound) {
+			return helpers.NewResponseError(helpers.ErrUserNotFound, fiber.StatusNotFound)
+		}
+		s.logger.ErrorContext(ctx.Context(), "error updating user", "error", err, "request_id", requestID)
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return helpers.NewResponseError(helpers.ErrEmailUsed, fiber.StatusConflict)
+		}
 		return helpers.NewResponseError(helpers.ErrInternal, fiber.StatusInternalServerError)
 	}
 

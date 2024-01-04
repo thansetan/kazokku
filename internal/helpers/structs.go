@@ -6,7 +6,7 @@ import (
 	"kazokku/internal/domain"
 )
 
-func UserRegisterDTOtoUserDomain(data dto.UserRegisterRequest) domain.User {
+func UserRegisterDTOtoUserDomain(data dto.UserRequest) domain.User {
 	var user domain.User
 
 	user.Name = sql.NullString{
@@ -29,7 +29,7 @@ func UserRegisterDTOtoUserDomain(data dto.UserRegisterRequest) domain.User {
 	return user
 }
 
-func UserUpdateDTOtoUserDomain(data dto.UserUpdateRequest) domain.User {
+func UserUpdateDTOtoUserDomain(data dto.UserRequest) domain.User {
 	var user domain.User
 
 	user.ID = data.UserID
@@ -53,7 +53,7 @@ func UserUpdateDTOtoUserDomain(data dto.UserUpdateRequest) domain.User {
 	return user
 }
 
-func UserRegisterDTOtoCCDomain(data dto.UserRegisterRequest, userID uint) domain.CreditCard {
+func UserRegisterDTOtoCCDomain(data dto.UserRequest, userID uint) domain.CreditCard {
 	var cc domain.CreditCard
 
 	cc.UserID = userID
@@ -81,7 +81,7 @@ func UserRegisterDTOtoCCDomain(data dto.UserRegisterRequest, userID uint) domain
 	return cc
 }
 
-func UserUpdateDTOtoCCDomain(data dto.UserUpdateRequest, userID uint) domain.CreditCard {
+func UserUpdateDTOtoCCDomain(data dto.UserRequest, userID uint) domain.CreditCard {
 	var cc domain.CreditCard
 
 	cc.UserID = userID

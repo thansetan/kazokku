@@ -1,11 +1,9 @@
 FROM golang:1.21.5 AS builder
 
 WORKDIR /app
-COPY go.mod go.sum ./
+COPY . .
 
 RUN go mod tidy
-
-COPY . .
 
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o ./main-app ./cmd/app/
 
